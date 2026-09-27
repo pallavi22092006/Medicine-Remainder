@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MediRemind</title>
+<style>
+:root{
+  --bg:#f4f6fb;--card:#fff;--text:#1c2333;--muted:#6b7385;
+  --accent:#4f6df5;--accent2:#39c6a3;--danger:#ef5a6f;--border:#e6e9f2;
+  --shadow:0 8px 24px rgba(30,40,80,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#12141c;--card:#1b1f2b;--text:#eef0f6;--muted:#9199b0;
+    --accent:#7c93ff;--accent2:#4fe0ba;--danger:#ff7a8a;--border:#2a2f3f;
+    --shadow:0 8px 24px rgba(0,0,0,.4);}
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);}
+.wrap{max-width:640px;margin:0 auto;padding:28px 18px 60px;}
+h1{font-size:1.5rem;margin:0 0 20px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;box-shadow:var(--shadow);margin-bottom:18px;}
+label{font-size:.78rem;color:var(--muted);display:block;margin:10px 0 5px;}
+input,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.92rem;}
+button{cursor:pointer;border:none;border-radius:10px;font-weight:600;padding:11px;font-size:.92rem;}
+.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;width:100%;margin-top:14px;}
+.link-btn{background:none;color:var(--accent);text-decoration:underline;padding:0;font-size:.85rem;}
+.error{color:var(--danger);font-size:.85rem;margin-top:8px;}
+.item{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--border);}
+.item:last-child{border-bottom:none;}
+.time-badge{min-width:64px;text-align:center;font-weight:700;background:var(--bg);border-radius:10px;padding:8px 6px;color:var(--accent);}
+.info{flex:1;}.name{font-weight:600;}.dose{font-size:.8rem;color:var(--muted);}
+.freq{font-size:.68rem;background:var(--bg);color:var(--muted);padding:2px 8px;border-radius:20px;display:inline-block;margin-top:3px;}
+.icon-btn{background:var(--bg);border:1px solid var(--border);width:34px;height:34px;border-radius:50%;}
+.taken .name{text-decoration:line-through;opacity:.6;}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
+.hidden{display:none !important;}
+form.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid .full{grid-column:1/-1;}
+.vol-wrap{display:flex;align-items:center;gap:6px;font-size:.8rem;color:var(--muted);}
+.vol-wrap input[type=range]{width:80px;}
+.tabs{display:flex;gap:8px;margin-bottom:14px;}
+.tab-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);flex:1;}
+.tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.log-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:.9rem;}
+.log-row:last-child{border-bottom:none;}
+.log-date{font-size:.72rem;color:var(--muted);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.04em;}
+.alarm-overlay{position:fixed;inset:0;background:rgba(10,12,20,.72);display:flex;align-items:center;justify-content:center;z-index:999;padding:20px;}
+.alarm-box{background:var(--card);border-radius:20px;padding:30px 26px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4);animation:pop .25s ease;}
+@keyframes pop{from{transform:scale(.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+.alarm-box .bell{font-size:2.6rem;animation:ring 0.6s infinite;}
+@keyframes ring{0%,100%{transform:rotate(0);}20%{transform:rotate(-15deg);}40%{transform:rotate(15deg);}60%{transform:rotate(-10deg);}80%{transform:rotate(10deg);}}
+.alarm-box h2{margin:10px 0 2px;}
+.alarm-box .dose{color:var(--muted);margin-bottom:20px;}
+.alarm-actions{display:flex;flex-direction:column;gap:10px;}
+.alarm-actions button{width:100%;}
+.btn-take{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+.btn-snooze{background:var(--bg);color:var(--text);border:1px solid var(--border);}
+.btn-dismiss{background:none;color:var(--muted);text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="authView">
+    <h1>💊 MediRemind</h1>
+    <div class="card">
+      <div id="loginForm">
+        <label>Email</label><input type="email" id="loginEmail">
+        <label>Password</label><input type="password" id="loginPassword">
+        <button class="primary" onclick="login()">Log In</button>
+        <div class="error" id="loginError"></div>
+        <p style="text-align:center;margin-top:14px;">No account? <button class="link-btn" onclick="showSignup()">Sign up</button></p>
+      </div>
+      <div id="signupForm" class="hidden">
+        <label>Full Name</label><input type="text" id="suName">
+        <label>Email</label><input type="email" id="suEmail">
+        <label>Phone</label><input type="text" id="suPhone">
+        <label>Password (min 6 chars)</label><input type="password" id="suPassword">
+        <button class="primary" onclick="signup()">Create Account</button>
+        <div class="error" id="signupError"></div>
+        <p style="text-align:center;margin-top:14px;">Have an account? <button class="link-btn" onclick="showLogin()">Log in</button></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="appView" class="hidden">
+    <div class="topbar">
+      <h1 id="greeting">💊 MediRemind</h1>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="vol-wrap">🔊<input type="range" id="volumeSlider" min="0" max="100" value="70"></div>
+        <button class="icon-btn" onclick="testAlarm()" title="Test alarm">🔔</button>
+        <button class="icon-btn" onclick="logout()" title="Log out">⎋</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tabReminders" onclick="showTab('reminders')">Reminders</button>
+      <button class="tab-btn" id="tabHistory" onclick="showTab('history')">History</button>
+    </div>
+
+    <div id="remindersTab">
+      <div class="card">
+        <form class="grid" id="reminderForm">
+          <div><label>Medicine Name</label><input type="text" id="rName" required></div>
+          <div><label>Dosage</label><input type="text" id="rDose" required></div>
+          <div><label>Time</label><input type="time" id="rTime" required></div>
+          <div><label>Frequency</label>
+            <select id="rFreq">
+              <option>Once</option><option selected>Daily</option><option>Weekly</option><option>As Needed</option>
+            </select>
+          </div>
+          <div class="full"><label>Alarm Tone</label>
+            <select id="rAlarm">
+              <option value="chime" selected>🎐 Gentle Chime</option>
+              <option value="beep">🔊 Classic Beep</option>
+              <option value="urgent">🚨 Urgent Alarm</option>
+              <option value="bell">🔔 Bell</option>
+            </select>
+          </div>
+          <button class="primary full" type="submit">+ Add Reminder</button>
+        </form>
+      </div>
+      <div class="card">
+        <div id="list"></div>
+      </div>
+    </div>
+
+    <div id="historyTab" class="hidden">
+      <div class="card">
+        <div id="historyList"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="alarmOverlay" class="alarm-overlay hidden">
+  <div class="alarm-box">
+    <div class="bell">🔔</div>
+    <h2 id="alarmName">Medicine</h2>
+    <div class="dose" id="alarmDose">Dosage</div>
+    <div class="alarm-actions">
+      <button class="btn-take" onclick="alarmTake()">✓ Mark as Taken</button>
+      <button class="btn-snooze" onclick="alarmSnooze()">⏰ Snooze 5 min</button>
+      <button class="btn-dismiss" onclick="alarmDismiss()">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = ''; // same origin — Django serves this template and the API
+let token = localStorage.getItem('mr_token');
+let currentUser = JSON.parse(localStorage.getItem('mr_user') || 'null');
+
+// Defensive: an overlay should NEVER be visible unless JS explicitly shows it.
+// This runs immediately, before anything else, so a stale state can't survive a reload.
+document.getElementById('alarmOverlay').classList.add('hidden');
+
+function showSignup(){ document.getElementById('loginForm').classList.add('hidden'); document.getElementById('signupForm').classList.remove('hidden'); }
+function showLogin(){ document.getElementById('signupForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); }
+
+function showTab(tab){
+  document.getElementById('remindersTab').classList.toggle('hidden', tab !== 'reminders');
+  document.getElementById('historyTab').classList.toggle('hidden', tab !== 'history');
+  document.getElementById('tabReminders').classList.toggle('active', tab === 'reminders');
+  document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
+  if (tab === 'history') loadHistory();
+}
+
+async function api(path, opts={}){
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...(opts.headers || {})
+    }
+  });
+  if (res.status === 204) return null;
+  const data = await res.json().catch(()=> ({}));
+  if (!res.ok) {
+    const msg = data.error || data.detail || Object.values(data)[0] || 'Request failed';
+    throw new Error(Array.isArray(msg) ? msg[0] : msg);
+  }
+  return data;
+}
+
+async function signup(){
+  const name = document.getElementById('suName').value.trim();
+  const email = document.getElementById('suEmail').value.trim();
+  const phone = document.getElementById('suPhone').value.trim();
+  const password = document.getElementById('suPassword').value;
+  try{
+    const data = await api('/api/auth/register/', { method:'POST', body: JSON.stringify({ name, email, phone, password }) });
+    onAuth(data);
+  }catch(e){ document.getElementById('signupError').textContent = e.message; }
+}
+
+async function login(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  try{
+    const data = await api('/api/auth/login/', { method:'POST', body: JSON.stringify({ email, password }) });
+    onAuth(data);
+  }catch(e){ document.getElementById('loginError').textContent = e.message; }
+}
+
+function onAuth(data){
+  token = data.access; currentUser = data.user;
+  localStorage.setItem('mr_token', token);
+  localStorage.setItem('mr_user', JSON.stringify(currentUser));
+  enterApp();
+}
+
+function logout(){
+  token = null; currentUser = null;
+  localStorage.removeItem('mr_token'); localStorage.removeItem('mr_user');
+  hideAlarmOverlay(); // always clear the popup before leaving the app view
+  document.getElementById('appView').classList.add('hidden');
+  document.getElementById('authView').classList.remove('hidden');
+}
+
+function enterApp(){
+  hideAlarmOverlay();
+  document.getElementById('authView').classList.add('hidden');
+  document.getElementById('appView').classList.remove('hidden');
+  document.getElementById('greeting').textContent = `💊 Hi, ${currentUser.name.split(' ')[0]}`;
+  showTab('reminders');
+  loadReminders();
+}
+
+function fmtTime(t){
+  const [h,m] = t.split(':').map(Number);
+  const ap = h>=12?'PM':'AM'; const hh=(h%12)||12;
+  return `${hh}:${String(m).padStart(2,'0')} ${ap}`;
+}
+
+function fmtDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+function fmtDateHeading(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'});
+}
+
+let cachedReminders = [];
+
+async function loadReminders(){
+  const items = await api('/api/reminders/');
+  cachedReminders = items;
+  const tk = new Date().toISOString().slice(0,10);
+  const list = document.getElementById('list');
+  list.innerHTML = items.length ? '' : '<p style="color:var(--muted);text-align:center;">No reminders yet.</p>';
+  items.forEach(it=>{
+    const takenToday = it.last_taken_date === tk;
+    const div = document.createElement('div');
+    div.className = 'item' + (takenToday ? ' taken' : '');
+    div.innerHTML = `
+      <div class="time-badge">${fmtTime(it.time)}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(it.medicine_name)}</div>
+        <div class="dose">${escapeHtml(it.dosage)}</div>
+        <span class="freq">${it.frequency}</span>
+        <span class="alarm-badge">${alarmLabel(it.alarm_sound)}</span>
+      </div>
+      <button class="icon-btn" title="Mark taken" onclick="markTaken(${it.id})">✓</button>
+      <button class="icon-btn" title="Delete" onclick="deleteReminder(${it.id})">✕</button>`;
+    list.appendChild(div);
+  });
+}
+
+async function loadHistory(){
+  const items = await api('/api/history/');
+  const el = document.getElementById('historyList');
+  if (!items.length){ el.innerHTML = '<p style="color:var(--muted);text-align:center;">No history yet — mark a reminder as taken to start one.</p>'; return; }
+  let html = '';
+  let lastDate = null;
+  items.forEach(it=>{
+    const dayKey = it.taken_at.slice(0,10);
+    if (dayKey !== lastDate){ html += `<div class="log-date">${fmtDateHeading(it.taken_at)}</div>`; lastDate = dayKey; }
+    html += `<div class="log-row"><span>${escapeHtml(it.medicine_name)} <span style="color:var(--muted);">(${escapeHtml(it.dosage)})</span></span><span style="color:var(--muted);">${fmtDateTime(it.taken_at)}</span></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+const ALARM_LABELS = { chime:'🎐 Chime', beep:'🔊 Beep', urgent:'🚨 Urgent', bell:'🔔 Bell' };
+function alarmLabel(sound){ return ALARM_LABELS[sound] || ALARM_LABELS.chime; }
+
+document.getElementById('reminderForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const medicine_name = document.getElementById('rName').value.trim();
+  const dosage = document.getElementById('rDose').value.trim();
+  const time = document.getElementById('rTime').value;
+  const frequency = document.getElementById('rFreq').value;
+  const alarm_sound = document.getElementById('rAlarm').value;
+  await api('/api/reminders/', { method:'POST', body: JSON.stringify({ medicine_name, dosage, time, frequency, alarm_sound }) });
+  e.target.reset();
+  document.getElementById('rFreq').value = 'Daily';
+  document.getElementById('rAlarm').value = 'chime';
+  loadReminders();
+});
+
+async function markTaken(id){ await api(`/api/reminders/${id}/`, { method:'PUT', body: JSON.stringify({ taken:true }) }); loadReminders(); }
+async function deleteReminder(id){ await api(`/api/reminders/${id}/`, { method:'DELETE' }); loadReminders(); }
+
+/* ---------------- Alarm engine (synthesized tones, no audio files) ---------------- */
+let audioCtx = null;
+let alarmLoopTimer = null;
+let currentAlarmReminder = null;
+const snoozedUntil = {};
+const alertedThisMinute = {};
+
+function getVolume(){ const v = document.getElementById('volumeSlider'); return v ? Number(v.value) / 100 : 0.7; }
+
+function ensureAudioCtx(){
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+const TONE_PATTERNS = {
+  chime:  { freqs: [880, 1108, 1318], gap: 260, type: 'sine',     cycleGap: 900 },
+  beep:   { freqs: [1000],            gap: 180, type: 'square',   cycleGap: 500 },
+  urgent: { freqs: [1200, 700],       gap: 130, type: 'sawtooth', cycleGap: 150 },
+  bell:   { freqs: [1568, 1174, 784], gap: 350, type: 'triangle', cycleGap: 1000 },
+};
+
+function playToneOnce(soundKey){
+  const ctx = ensureAudioCtx();
+  const pattern = TONE_PATTERNS[soundKey] || TONE_PATTERNS.chime;
+  const vol = getVolume();
+  pattern.freqs.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = pattern.type;
+    osc.frequency.value = freq;
+    gain.gain.value = vol * 0.25;
+    osc.connect(gain).connect(ctx.destination);
+    const startAt = ctx.currentTime + (i * pattern.gap) / 1000;
+    const stopAt = startAt + pattern.gap / 1000 * 0.85;
+    osc.start(startAt);
+    osc.stop(stopAt);
+  });
+  return pattern.freqs.length * pattern.gap + pattern.cycleGap;
+}
+
+function startAlarmLoop(soundKey){
+  stopAlarmLoop();
+  const cycle = () => { const dur = playToneOnce(soundKey); alarmLoopTimer = setTimeout(cycle, dur); };
+  cycle();
+}
+function stopAlarmLoop(){ if (alarmLoopTimer){ clearTimeout(alarmLoopTimer); alarmLoopTimer = null; } }
+
+function showAlarmOverlay(reminder){
+  currentAlarmReminder = reminder;
+  document.getElementById('alarmName').textContent = reminder.medicine_name;
+  document.getElementById('alarmDose').textContent = reminder.dosage + ' • ' + reminder.frequency;
+  document.getElementById('alarmOverlay').classList.remove('hidden');
+  startAlarmLoop(reminder.alarm_sound || 'chime');
+  if ('Notification' in window && Notification.permission === 'granted'){
+    try{ new Notification('💊 Time to take ' + reminder.medicine_name, { body: reminder.dosage, tag: 'mr-'+reminder.id }); }catch(e){}
+  }
+}
+function hideAlarmOverlay(){
+  document.getElementById('alarmOverlay').classList.add('hidden');
+  stopAlarmLoop();
+  currentAlarmReminder = null;
+}
+
+async function alarmTake(){ const r = currentAlarmReminder; hideAlarmOverlay(); if (r && r.id !== 'test') await markTaken(r.id); }
+function alarmSnooze(){ const r = currentAlarmReminder; hideAlarmOverlay(); if (r) snoozedUntil[r.id] = Date.now() + 5*60*1000; }
+function alarmDismiss(){ const r = currentAlarmReminder; hideAlarmOverlay(); if (r) alertedThisMinute[r.id] = currentHHMM(); }
+function testAlarm(){ showAlarmOverlay({ id:'test', medicine_name:'Test Medicine', dosage:'Sample dosage', frequency:'Preview', alarm_sound: document.getElementById('rAlarm').value }); }
+
+function currentHHMM(){ const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+
+function checkAlarms(){
+  if (!cachedReminders.length || !document.getElementById('alarmOverlay').classList.contains('hidden')) return;
+  const now = currentHHMM();
+  const today = new Date().toISOString().slice(0,10);
+  for (const r of cachedReminders){
+    if (r.time !== now) continue;
+    if (r.last_taken_date === today) continue;
+    if (snoozedUntil[r.id] && Date.now() < snoozedUntil[r.id]) continue;
+    if (alertedThisMinute[r.id] === now) continue;
+    alertedThisMinute[r.id] = now;
+    showAlarmOverlay(r);
+    break;
+  }
+}
+
+if ('Notification' in window && Notification.permission === 'default'){ Notification.requestPermission(); }
+
+const savedVolume = localStorage.getItem('mr_volume');
+if (savedVolume) document.getElementById('volumeSlider').value = savedVolume;
+document.getElementById('volumeSlider').addEventListener('input', e => { localStorage.setItem('mr_volume', e.target.value); });
+
+setInterval(checkAlarms, 10000);
+setInterval(() => { if (token && !document.getElementById('remindersTab').classList.contains('hidden')) loadReminders().catch(()=>{}); }, 60000);
+
+// Only ever enter the app view if we actually have a token — otherwise stay on the login screen,
+// and the overlay stays hidden (set at the very top of this script) either way.
+if (token && currentUser) enterApp();
+</script>
+</body>
+</html>
